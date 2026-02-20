@@ -55,13 +55,16 @@ export default function DashboardPage() {
         const history = messages.filter(m => m.role !== 'error').map(({role, content}) => ({role, content}));
         aiResponse = await continueChat({ history, prompt: input });
       } else { // local provider
-        const response = await fetch(`${endpoint}/v1/chat/completions`, {
+        const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: selectedModel,
-            messages: [...messages.filter(m => m.role !== 'error'), userMessage].map(m => ({role: m.role, content: m.content})),
-            stream: false,
+            endpoint,
+            payload: {
+              model: selectedModel,
+              messages: [...messages.filter(m => m.role !== 'error'), userMessage].map(m => ({role: m.role, content: m.content})),
+              stream: false,
+            }
           }),
         });
 

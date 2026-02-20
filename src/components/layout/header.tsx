@@ -89,9 +89,11 @@ export function Header() {
 
     // Actual connection for 'local'
     try {
-      // Use /v1/models as a health check for OpenAI-compatible servers
-      const modelsUrl = new URL('/v1/models', endpoint).toString();
-      const response = await fetch(modelsUrl);
+      const response = await fetch('/api/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint }),
+      });
 
       if (response.ok) {
         setIsConnected(true);
@@ -100,15 +102,15 @@ export function Header() {
           description: `Successfully connected to ${endpoint}.`,
         });
       } else {
-        throw new Error(`Server responded with status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Server responded with status: ${response.status}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Connection failed:', error);
       toast({
         variant: 'destructive',
         title: 'Connection Failed',
-        description:
-          'Could not connect. Ensure the server is running and CORS is enabled.',
+        description: error.message || 'Could not connect. Ensure the server is running.',
       });
       setIsConnected(false);
     } finally {
