@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,12 +6,56 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Globe, Server } from 'lucide-react';
 
-const providers = [
-  { name: 'OpenAI', type: 'cloud', enabled: true },
-  { name: 'Ollama', type: 'local', enabled: true },
-  { name: 'Groq', type: 'cloud', enabled: false },
-  { name: 'Custom REST', type: 'local', enabled: false },
-];
+interface ProviderInput {
+  id: string;
+  label: string;
+  type: string;
+  defaultValue?: string;
+  placeholder?: string;
+}
+
+function ProviderTabContent({
+  provider,
+  enabled,
+  inputs,
+  description,
+}: {
+  provider: string;
+  enabled: boolean;
+  inputs: ProviderInput[];
+  description?: string;
+}) {
+  return (
+    <TabsContent value={provider} className="mt-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h3 className="text-lg font-semibold capitalize">{provider === 'custom' ? 'Custom REST' : provider}</h3>
+            <Switch defaultChecked={enabled} aria-label={`Enable ${provider}`} />
+          </div>
+        </div>
+        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+        <div className="space-y-4">
+          {inputs.map((input) => (
+            <div key={input.id} className="space-y-2">
+              <Label htmlFor={input.id}>{input.label}</Label>
+              <Input
+                id={input.id}
+                type={input.type}
+                defaultValue={input.defaultValue}
+                placeholder={input.placeholder}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline">Test Connection</Button>
+          <Button>Save</Button>
+        </div>
+      </div>
+    </TabsContent>
+  );
+}
 
 export default function SettingsPage() {
   return (
@@ -50,53 +93,51 @@ export default function SettingsPage() {
               Add, configure, and test connections to your LLM providers.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4 rounded-lg border p-4">
-                <div className='flex items-center justify-between'>
-                    <Label>Auto-detect local servers</Label>
-                    <Switch defaultChecked />
-                </div>
-                <p className='text-sm text-muted-foreground'>
-                    Automatically scan your local network for providers like Ollama.
-                </p>
-            </div>
-            {providers.map((provider) => (
-              <Card key={provider.name}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <div className="flex items-center gap-3">
-                    {provider.type === 'local' ? <Server className='h-5 w-5' /> : <Globe className='h-5 w-5' />}
-                    <h3 className="font-semibold">{provider.name}</h3>
-                    {provider.type === 'local' && <Badge variant="outline">Local</Badge>}
-                  </div>
-                  <Switch defaultChecked={provider.enabled} />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {provider.name === 'Ollama' && (
-                    <div className="space-y-2">
-                      <Label htmlFor={`${provider.name}-url`}>Server URL</Label>
-                      <Input
-                        id={`${provider.name}-url`}
-                        defaultValue="http://localhost:11434"
-                      />
-                    </div>
-                  )}
-                  {provider.type === 'cloud' && (
-                     <div className="space-y-2">
-                     <Label htmlFor={`${provider.name}-key`}>API Key</Label>
-                     <Input
-                       id={`${provider.name}-key`}
-                       type="password"
-                       defaultValue="••••••••••••••••••••"
-                     />
-                   </div>
-                  )}
-                  <div className="flex gap-2">
-                    <Button variant="outline">Test Connection</Button>
-                    <Button>Save</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <CardContent>
+            <Tabs defaultValue="openai" className="w-full pt-4">
+              <TabsList className="grid w-full grid-cols-4 max-w-lg">
+                <TabsTrigger value="openai">
+                  <Globe className="mr-2 h-4 w-4" />
+                  OpenAI
+                </TabsTrigger>
+                <TabsTrigger value="groq">
+                  <Globe className="mr-2 h-4 w-4" />
+                  Groq
+                </TabsTrigger>
+                <TabsTrigger value="ollama">
+                  <Server className="mr-2 h-4 w-4" />
+                  Ollama
+                </TabsTrigger>
+                <TabsTrigger value="custom">
+                  <Server className="mr-2 h-4 w-4" />
+                  Custom
+                </TabsTrigger>
+              </TabsList>
+              <ProviderTabContent
+                provider="openai"
+                enabled={true}
+                inputs={[{ id: 'openai-key', label: 'API Key', type: 'password', defaultValue: '••••••••••••••••••••' }]}
+              />
+              <ProviderTabContent
+                provider="groq"
+                enabled={false}
+                inputs={[{ id: 'groq-key', label: 'API Key', type: 'password', defaultValue: '••••••••••••••••••••' }]}
+              />
+              <ProviderTabContent
+                provider="ollama"
+                enabled={true}
+                inputs={[{ id: 'ollama-url', label: 'Server URL', type: 'text', defaultValue: 'http://localhost:11434' }]}
+              />
+              <ProviderTabContent
+                provider="custom"
+                enabled={false}
+                inputs={[
+                  { id: 'custom-url', label: 'Endpoint URL', type: 'text', placeholder: 'https://.../v1/chat/completions' },
+                  { id: 'custom-key', label: 'API Key (Optional)', type: 'password' },
+                ]}
+                description="Connect to any OpenAI-compatible REST endpoint."
+              />
+            </Tabs>
           </CardContent>
         </Card>
       </TabsContent>
