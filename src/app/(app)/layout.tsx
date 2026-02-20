@@ -10,7 +10,7 @@ import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
 import { Code2, LifeBuoy } from 'lucide-react';
-import Image from 'next/image';
+import { BottomNav } from '@/components/layout/bottom-nav';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -42,20 +42,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarContent>
         <SidebarFooter>
           <div className="flex flex-col gap-1 p-2">
-             <Button variant="ghost" className="justify-start gap-2">
-                <Code2 />
-                <span className="group-data-[collapsible=icon]:hidden">API Docs</span>
-             </Button>
-             <Button variant="ghost" className="justify-start gap-2">
-                <LifeBuoy />
-                <span className="group-data-[collapsible=icon]:hidden">Support</span>
-             </Button>
+            <Button variant="ghost" className="justify-start gap-2">
+              <Code2 />
+              <span className="group-data-[collapsible=icon]:hidden">
+                API Docs
+              </span>
+            </Button>
+            <Button variant="ghost" className="justify-start gap-2">
+              <LifeBuoy />
+              <span className="group-data-[collapsible=icon]:hidden">
+                Support
+              </span>
+            </Button>
           </div>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <Header />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 p-4 pb-20 sm:p-6 md:pb-4">{children}</main>
+        <BottomNav />
       </SidebarInset>
     </SidebarProvider>
   );

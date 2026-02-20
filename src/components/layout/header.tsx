@@ -4,13 +4,9 @@ import { usePathname } from 'next/navigation';
 import {
   Bot,
   Code2,
-  History,
   LifeBuoy,
   LogOut,
-  Plug,
-  Server,
   Settings2,
-  Sparkles,
   User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,15 +21,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 export function Header() {
   const pathname = usePathname();
@@ -48,40 +35,6 @@ export function Header() {
       </h1>
 
       <div className="flex flex-1 items-center justify-end gap-4">
-        <div className="hidden items-center gap-2 lg:flex">
-          <Tabs defaultValue="gemini">
-            <TabsList className="h-10">
-              <TabsTrigger value="local">
-                <Server className="mr-2 h-4 w-4" />
-                Local
-              </TabsTrigger>
-              <TabsTrigger value="gemini">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Gemini
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <Input
-            placeholder="http://localhost:1234"
-            className="h-10 w-60"
-          />
-          <Select>
-            <SelectTrigger className="h-10 w-[200px]">
-              <SelectValue placeholder="Connect to see models" />
-            </SelectTrigger>
-            <SelectContent>
-              {/* Models would be populated dynamically */}
-            </SelectContent>
-          </Select>
-          <Button className="h-10">
-            <Plug className="mr-2 h-4 w-4" />
-            Connect
-          </Button>
-          <Button variant="ghost" size="icon" className="h-10 w-10">
-            <History className="h-5 w-5" />
-          </Button>
-        </div>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
