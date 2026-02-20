@@ -22,6 +22,6 @@ The functionality to connect to a local model (e.g., Ollama running on `http://l
 
 To use a custom model on Vercel, it must be accessible via a public internet endpoint.
 
-### `apphosting.yaml`
+### Function Timeouts
 
-This project includes an `apphosting.yaml` file, which is used for deployments to Firebase App Hosting. This file is not used by Vercel and can be safely ignored or deleted.
+This application is configured with a 60-second execution timeout for server functions, which is necessary for some AI-related tasks that can take longer to complete. This is handled via Next.js Route Segment Config.
