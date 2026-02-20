@@ -6,7 +6,9 @@ import {
   Code2,
   LifeBuoy,
   LogOut,
+  Server,
   Settings2,
+  Sparkles,
   User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,13 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function Header() {
   const pathname = usePathname();
@@ -42,17 +38,18 @@ export function Header() {
       </h1>
 
       <div className="ml-auto flex items-center gap-4">
-        <Select defaultValue="gpt-4">
-          <SelectTrigger className="w-[180px] hidden sm:flex">
-            <SelectValue placeholder="Select a model" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="gpt-4">GPT-4 Omni</SelectItem>
-            <SelectItem value="claude-3">Claude 3 Opus</SelectItem>
-            <SelectItem value="llama-3">Llama 3 70B</SelectItem>
-            <SelectItem value="gemma-2">Gemma 2 9B</SelectItem>
-          </SelectContent>
-        </Select>
+        <Tabs defaultValue="gemini" className="hidden sm:block">
+          <TabsList>
+            <TabsTrigger value="local">
+              <Server className="mr-2 h-4 w-4" />
+              Local
+            </TabsTrigger>
+            <TabsTrigger value="gemini">
+              <Sparkles className="mr-2 h-4 w-4" />
+              Gemini
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
