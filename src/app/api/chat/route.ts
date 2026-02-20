@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
+  const { endpoint, payload } = await req.json();
+
+  if (!endpoint || !payload) {
+    return NextResponse.json(
+      { error: 'Endpoint and payload are required' },
+      { status: 400 }
+    );
+  }
+
   try {
-    const { endpoint, payload } = await req.json();
-
-    if (!endpoint || !payload) {
-      return NextResponse.json(
-        { error: 'Endpoint and payload are required' },
-        { status: 400 }
-      );
-    }
-
     const chatUrl = new URL('/v1/chat/completions', endpoint).toString();
 
     const response = await fetch(chatUrl, {
@@ -20,18 +20,32 @@ export async function POST(req: NextRequest) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData?.error?.message || `Request failed with status: ${response.status}`
-      );
+      const errorText = await response.text();
+      let errorMessage = errorText;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage =
+          errorJson.error?.message ||
+          errorJson.error ||
+          errorJson.message ||
+          errorText;
+      } catch (e) {
+        // Not JSON
+      }
+      return NextResponse.json({ error: errorMessage }, { status: response.status });
     }
 
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error: any) {
-    return NextResponse.json(
-      { error: { message: error.message || 'An unexpected error occurred.' } },
-      { status: 500 }
-    );
+    console.error('API chat route error:', error);
+    let message = error.message || 'An unexpected error occurred.';
+    if (
+      (error.cause as any)?.code === 'ECONNREFUSED' ||
+      message.includes('fetch failed')
+    ) {
+      message = `Could not connect to the endpoint at ${endpoint}. Please ensure the server is running and accessible from the application environment. If you are connecting to a local server, it may not be reachable from the cloud development environment.`;
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
