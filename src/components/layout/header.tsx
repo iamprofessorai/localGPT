@@ -8,7 +8,14 @@ import {
   LogOut,
   Settings2,
   User,
+  Globe,
+  Plug,
+  History,
+  Loader2,
+  XCircle,
 } from 'lucide-react';
+import React, { useState } from 'react';
+
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,20 +28,170 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export function Header() {
   const pathname = usePathname();
   const segment = pathname.split('/').filter(Boolean).pop() || 'dashboard';
   const title = segment.charAt(0).toUpperCase() + segment.slice(1);
 
-  return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
-      <SidebarTrigger className="md:hidden" />
-      <h1 className="hidden font-headline text-lg font-semibold tracking-tight sm:text-xl md:block">
-        {title}
-      </h1>
+  const [provider, setProvider] = useState<'local' | 'gemini'>('local');
+  const [endpoint, setEndpoint] = useState('http://localhost:11434');
+  const [selectedModel, setSelectedModel] = useState('gemma-2-9b');
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const { toast } = useToast();
 
-      <div className="flex flex-1 items-center justify-end gap-4">
+  async function handleConnect() {
+    if (!endpoint && provider === 'local') {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please enter a valid endpoint URL.',
+      });
+      return;
+    }
+
+    setIsConnecting(true);
+    setIsConnected(false);
+
+    if (provider === 'gemini') {
+      // Simulate connection for 'gemini'
+      setTimeout(() => {
+        setIsConnected(true);
+        toast({
+          title: 'Success',
+          description: 'Connected to Gemini.',
+        });
+        setIsConnecting(false);
+      }, 1000);
+      return;
+    }
+    
+    // Actual connection for 'local'
+    try {
+      const response = await fetch(endpoint);
+      if (response.ok) {
+        setIsConnected(true);
+        toast({
+          title: 'Success',
+          description: `Successfully connected to ${endpoint}.`,
+        });
+      } else {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Connection failed:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Connection Failed',
+        description:
+          'Could not connect. Ensure the server is running with CORS enabled.',
+      });
+      setIsConnected(false);
+    } finally {
+      setIsConnecting(false);
+    }
+  }
+
+  function handleDisconnect() {
+    setIsConnected(false);
+    toast({
+      title: 'Disconnected',
+      description: 'Connection has been closed.',
+    });
+  }
+
+  return (
+    <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
+      <div className="flex items-center gap-4">
+        <SidebarTrigger className="md:hidden" />
+        <h1 className="hidden font-headline text-lg font-semibold tracking-tight sm:text-xl md:block">
+          {title}
+        </h1>
+      </div>
+      
+      {/* Model Connection UI */}
+      <div className="hidden flex-1 items-center justify-center gap-2 md:flex">
+        <Tabs
+          value={provider}
+          onValueChange={(value) => {
+            setProvider(value as 'local' | 'gemini');
+            setIsConnected(false); // Disconnect when switching provider
+            setSelectedModel(value === 'local' ? 'gemma-2-9b' : 'gemini-2.5-flash');
+          }}
+          className="w-auto"
+        >
+          <TabsList className="grid grid-cols-2">
+            <TabsTrigger value="local">Local</TabsTrigger>
+            <TabsTrigger value="gemini">Gemini</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
+        {provider === 'local' && (
+          <div className="relative">
+            <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="http://localhost:11434"
+              className="w-64 pl-9"
+              value={endpoint}
+              onChange={(e) => setEndpoint(e.target.value)}
+              disabled={isConnecting || isConnected}
+            />
+          </div>
+        )}
+        
+        <Select
+          value={selectedModel}
+          onValueChange={setSelectedModel}
+          disabled={isConnecting || (provider === 'gemini' && isConnected)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select a model" />
+          </SelectTrigger>
+          <SelectContent>
+            {provider === 'local' ? (
+              <>
+                <SelectItem value="gemma-2-9b">Gemma 2 9B</SelectItem>
+                <SelectItem value="llama-3-70b">Llama 3 70B</SelectItem>
+              </>
+            ) : (
+              <>
+                <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
+              </>
+            )}
+          </SelectContent>
+        </Select>
+        
+        <Button
+          onClick={isConnected ? handleDisconnect : handleConnect}
+          disabled={isConnecting}
+          className={cn(
+            'w-[130px] bg-purple-600 text-white hover:bg-purple-700',
+            isConnected && provider === 'local' && 'bg-green-600 hover:bg-green-700',
+            isConnected && provider === 'gemini' && 'bg-blue-600 hover:bg-blue-700',
+          )}
+        >
+          {isConnecting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : isConnected ? (
+            <XCircle className="mr-2 h-4 w-4" />
+          ) : (
+            <Plug className="mr-2 h-4 w-4" />
+          )}
+          {isConnecting ? 'Connecting' : isConnected ? 'Disconnect' : 'Connect'}
+        </Button>
+        <Button variant="outline" size="icon">
+          <History className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
