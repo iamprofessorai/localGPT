@@ -3,134 +3,128 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Paperclip, Send, Settings, BarChart, Bot, Workflow } from 'lucide-react';
-import React from 'react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from 'recharts';
-import { costData, navItems } from '@/lib/data';
-import { ChartTooltipContent } from '@/components/ui/chart';
-import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
+import { Paperclip, Send, Loader2, AlertTriangle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useModel } from '@/context/model-context';
+import { continueChat } from '@/ai/flows/chat';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
-const agents = [
-  { name: 'Research Assistant', status: 'active' },
-  { name: 'Code Generator', status: 'active' },
-  { name: 'Email Sorter', status: 'inactive' },
-];
-
+interface Message {
+  role: 'user' | 'model' | 'error';
+  content: string;
+}
 
 export default function DashboardPage() {
+  const [messages, setMessages] = useState<Message[]>([
+    { role: 'model', content: 'Hello! How can I help you today? Select a model provider and connect from the header to get started.' },
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const { provider, isConnected, endpoint, selectedModel } = useModel();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    if (!isConnected) {
+      toast({
+        variant: 'destructive',
+        title: 'Not Connected',
+        description: 'Please connect to a model provider first.',
+      });
+      return;
+    }
+
+    const userMessage: Message = { role: 'user', content: input };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      let aiResponse = '';
+      if (provider === 'gemini') {
+        const history = messages.filter(m => m.role !== 'error').map(({role, content}) => ({role, content}));
+        aiResponse = await continueChat({ history, prompt: input });
+      } else { // local provider
+        const response = await fetch(`${endpoint}/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [...messages.filter(m => m.role !== 'error'), userMessage].map(m => ({role: m.role, content: m.content})),
+            stream: false,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData?.error?.message || `Request failed with status ${response.status}`);
+        }
+        
+        const data = await response.json();
+        aiResponse = data.choices[0].message.content;
+      }
+      setMessages((prev) => [...prev, { role: 'model', content: aiResponse }]);
+
+    } catch (error: any) {
+      const errorMessage = error.message || 'An unexpected error occurred.';
+      setMessages((prev) => [...prev, { role: 'error', content: errorMessage }]);
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   return (
-    <div className="grid h-full grid-cols-1 gap-6 lg:grid-cols-3">
-      <div className="flex flex-col gap-6 lg:col-span-2">
-        <Card className="flex-1">
-          <CardHeader>
-            <CardTitle>Chat</CardTitle>
-          </CardHeader>
-          <CardContent className="flex h-[calc(100%-80px)] flex-col">
-            <div className="flex-1 space-y-6 overflow-auto rounded-lg border p-4">
-              <ChatMessage author="AI">
-                Hello! How can I help you today?
+    <div className="flex h-[calc(100vh-8rem)] flex-col">
+      <Card className="flex-1 flex flex-col">
+        <CardHeader>
+          <CardTitle>Chat</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
+          <div className="flex-1 space-y-4 overflow-y-auto rounded-lg border p-4">
+            {messages.map((message, index) => (
+              <ChatMessage key={index} author={message.role}>
+                {message.content}
               </ChatMessage>
-              <ChatMessage author="User">
-                Can you explain what a Large Language Model is in simple terms?
-              </ChatMessage>
-            </div>
-            <div className="relative mt-4">
-              <Textarea
-                placeholder="Type your message here..."
-                className="min-h-[80px] resize-none pr-28"
-              />
-              <div className="absolute bottom-2 right-2 flex items-center gap-2">
-                <Button variant="ghost" size="icon">
-                  <Paperclip className="h-5 w-5" />
-                </Button>
-                <Button size="icon">
-                  <Send className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="space-y-6 lg:col-span-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>Analytics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={150}>
-              <LineChart data={costData.slice(0, 4)}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="hsl(var(--border))"
-                  vertical={false}
-                />
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={30} />
-                <Tooltip
-                  cursor={{ fill: 'hsl(var(--secondary))' }}
-                  content={<ChartTooltipContent />}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="cost"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Active Agents</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {agents.map((agent) => (
-              <div key={agent.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Bot className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-medium">{agent.name}</span>
-                </div>
-                <Badge
-                  variant={agent.status === 'active' ? 'default' : 'secondary'}
-                  className={
-                    agent.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : ''
-                  }
-                >
-                  {agent.status}
-                </Badge>
-              </div>
             ))}
-          </CardContent>
-        </Card>
-         <Card>
-          <CardHeader>
-            <CardTitle>Quick Access</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-             {navItems.slice(1, 5).map((item) => (
-                <Link key={item.title} href={item.href} className="flex flex-col items-center gap-2 rounded-lg border p-4 text-center hover:bg-accent">
-                    <item.icon className="h-6 w-6 text-primary" />
-                    <span className="text-sm font-medium">{item.title}</span>
-                </Link>
-             ))}
-          </CardContent>
-        </Card>
-      </div>
+             <div ref={messagesEndRef} />
+          </div>
+          <form onSubmit={handleSubmit} className="relative">
+            <Textarea
+              placeholder="Type your message here..."
+              className="min-h-[80px] resize-none pr-28"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e as any);
+                }
+              }}
+              disabled={isLoading}
+            />
+            <div className="absolute bottom-2 right-2 flex items-center gap-2">
+              <Button variant="ghost" size="icon" type="button" disabled={isLoading}>
+                <Paperclip className="h-5 w-5" />
+              </Button>
+              <Button size="icon" type="submit" disabled={isLoading || !input.trim()}>
+                {isLoading ? <Loader2 className="animate-spin" /> : <Send className="h-5 w-5" />}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -139,25 +133,30 @@ function ChatMessage({
   author,
   children,
 }: {
-  author: 'AI' | 'User';
+  author: 'model' | 'user' | 'error';
   children: React.ReactNode;
 }) {
-  const isAI = author === 'AI';
+  const isUser = author === 'user';
+  const isError = author === 'error';
+
   return (
-    <div className={`flex items-start gap-3 ${!isAI && 'justify-end'}`}>
-      {isAI && (
+    <div className={cn('flex items-start gap-3', isUser && 'justify-end')}>
+      {!isUser && (
         <Avatar className="h-9 w-9 border">
-          <AvatarFallback>AI</AvatarFallback>
+          <AvatarFallback>{isError ? <AlertTriangle className="text-destructive" /> : 'AI'}</AvatarFallback>
         </Avatar>
       )}
       <div
-        className={`max-w-md rounded-lg p-3 ${
-          isAI ? 'bg-secondary' : 'bg-primary text-primary-foreground'
-        }`}
+        className={cn(
+          'max-w-md rounded-lg p-3 text-sm leading-relaxed',
+          isUser && 'bg-primary text-primary-foreground',
+          !isUser && !isError && 'bg-secondary',
+          isError && 'bg-destructive/10 border border-destructive/20 text-destructive'
+        )}
       >
-        <p className="text-sm leading-relaxed">{children}</p>
+       {children}
       </div>
-      {!isAI && (
+      {isUser && (
         <Avatar className="h-9 w-9 border">
           <AvatarImage
             src="https://picsum.photos/seed/10/100/100"
